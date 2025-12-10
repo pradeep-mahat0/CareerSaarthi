@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Building2, 
   FileText, 
@@ -11,13 +11,17 @@ import {
   CheckCircle2,
   LayoutDashboard,
   MessageSquare,
-  Bot
+  Bot,
+  Gamepad2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { AgentType, AgentResult, UserInput, AgentConfig } from './types';
 import { runAgent } from './services/geminiService';
 import { AgentResultCard } from './components/AgentResultCard';
 import { ProcessingOverview } from './components/ProcessingOverview';
 import { MockInterviewChat } from './components/MockInterviewChat';
+import { GameMode } from './components/GameMode';
 
 const AGENTS: AgentConfig[] = [
   {
@@ -78,6 +82,15 @@ function App() {
   const [results, setResults] = useState<Record<AgentType, AgentResult>>(INITIAL_RESULTS);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mockInteractionCount, setMockInteractionCount] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -150,52 +163,61 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Navbar */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <nav className={`border-b sticky top-0 z-50 transition-colors duration-300 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-2">
               <div className="bg-indigo-600 p-2 rounded-lg">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">
                 PlacementPrep.AI
               </span>
             </div>
-            {step === 'results' && (
-              <button 
-                onClick={() => setStep('input')}
-                className="self-center text-sm font-medium text-gray-500 hover:text-indigo-600"
-              >
-                New Analysis
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+                <button 
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    className={`p-2 rounded-full transition-colors ${isDarkMode ? 'bg-gray-700 text-yellow-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                    title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                    {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+                {step === 'results' && (
+                <button 
+                    onClick={() => setStep('input')}
+                    className={`text-sm font-medium hover:text-indigo-500 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}
+                >
+                    New Analysis
+                </button>
+                )}
+            </div>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-grow bg-gray-50/50">
+      <main className="flex-grow overflow-hidden">
         {step === 'input' ? (
-          <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8 overflow-y-auto h-full">
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl mb-4">
-                Master Your <span className="text-indigo-600">Dream Job</span> Interview
+              <h1 className={`text-4xl font-extrabold tracking-tight sm:text-5xl mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Master Your <span className="text-indigo-500">Dream Job</span> Interview
               </h1>
-              <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+              <p className={`text-xl max-w-2xl mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 Deploy specialized AI agents to research the company, decode the recruitment process, find past questions, optimize your resume, and practice with a live mock interviewer.
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className={`rounded-2xl shadow-xl border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
               <div className="p-8 md:p-10 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">Target Company <span className="text-red-500">*</span></label>
+                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Target Company <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Building2 className="h-5 w-5 text-gray-400" />
+                        <Building2 className={`h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       </div>
                       <input
                         type="text"
@@ -203,16 +225,16 @@ function App() {
                         value={input.companyName}
                         onChange={handleInputChange}
                         placeholder="e.g. Google, Goldman Sachs, TCS"
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">Job Role <span className="text-red-500">*</span></label>
+                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Job Role <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Briefcase className="h-5 w-5 text-gray-400" />
+                        <Briefcase className={`h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       </div>
                       <input
                         type="text"
@@ -220,26 +242,26 @@ function App() {
                         value={input.jobRole}
                         onChange={handleInputChange}
                         placeholder="e.g. Software Engineer, Data Analyst"
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`}
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <label className="block text-sm font-medium text-gray-700">Job Description (Optional)</label>
+                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Job Description (Optional)</label>
                   <textarea
                     name="jobDescription"
                     value={input.jobDescription}
                     onChange={handleInputChange}
                     rows={4}
                     placeholder="Paste the job description here for better resume tailoring and HR answer generation..."
-                    className="block w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                    className={`block w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`}
                   />
                 </div>
 
                 <div className="space-y-4">
-                  <label className="block text-sm font-medium text-gray-700">Your Resume (Optional)</label>
+                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Your Resume (Optional)</label>
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
                        <textarea
@@ -248,7 +270,7 @@ function App() {
                         onChange={handleInputChange}
                         rows={6}
                         placeholder="Paste your resume text here..."
-                        className="block w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-mono bg-gray-50"
+                        className={`block w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-mono ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                       />
                       {input.resumeContent && (
                         <div className="absolute top-2 right-2 text-green-600 bg-green-100 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
@@ -258,13 +280,13 @@ function App() {
                     </div>
                     
                     <div className="flex md:flex-col items-center justify-center gap-3 md:w-48">
-                      <div className="w-full h-px bg-gray-200 md:hidden"></div>
-                      <span className="text-gray-400 text-sm font-medium whitespace-nowrap">OR</span>
-                      <div className="w-full h-px bg-gray-200 md:hidden"></div>
+                      <div className={`w-full h-px md:hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                      <span className={`text-sm font-medium whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>OR</span>
+                      <div className={`w-full h-px md:hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
                       
-                      <label className="w-full flex flex-col items-center justify-center px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all group text-center">
-                        <Upload className="w-8 h-8 text-gray-400 group-hover:text-indigo-500 mb-2" />
-                        <span className="text-sm text-gray-600 font-medium">Upload .txt/.md</span>
+                      <label className={`w-full flex flex-col items-center justify-center px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer transition-all group text-center ${isDarkMode ? 'border-gray-600 hover:border-indigo-500 hover:bg-gray-700' : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50'}`}>
+                        <Upload className={`w-8 h-8 mb-2 ${isDarkMode ? 'text-gray-500 group-hover:text-indigo-400' : 'text-gray-400 group-hover:text-indigo-500'}`} />
+                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Upload .txt/.md</span>
                         <input type="file" className="hidden" accept=".txt,.md" onChange={handleFileUpload} />
                       </label>
                     </div>
@@ -274,7 +296,7 @@ function App() {
                 <button
                   onClick={startAnalysis}
                   disabled={!input.companyName || !input.jobRole}
-                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-semibold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all transform hover:scale-[1.01]"
+                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-semibold py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-[1.01]"
                 >
                   Deploy Agents <ArrowRight className="w-5 h-5" />
                 </button>
@@ -284,11 +306,11 @@ function App() {
         ) : (
           <div className="h-[calc(100vh-64px)] flex overflow-hidden">
             {/* Sidebar (Desktop) */}
-            <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-200 h-full flex-shrink-0">
-              <div className="p-6 border-b border-gray-100">
+            <aside className={`hidden md:flex flex-col w-72 border-r h-full flex-shrink-0 transition-colors duration-300 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                 <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Target</h2>
-                <div className="font-bold text-gray-800 text-lg truncate">{input.companyName}</div>
-                <div className="text-gray-500 text-sm truncate">{input.jobRole}</div>
+                <div className={`font-bold text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{input.companyName}</div>
+                <div className={`text-sm truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{input.jobRole}</div>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -297,22 +319,36 @@ function App() {
                   onClick={() => setActiveTab('overview')}
                   className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
                     activeTab === 'overview'
-                      ? 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? `bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200 ${isDarkMode ? 'bg-indigo-900/30 text-indigo-400 ring-indigo-800' : ''}`
+                      : `text-gray-600 hover:bg-gray-50 hover:text-gray-900 ${isDarkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200' : ''}`
                   }`}
                 >
-                  <div className={`${activeTab === 'overview' ? 'text-indigo-600' : 'text-gray-400'}`}>
+                  <div className={`${activeTab === 'overview' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
                     <LayoutDashboard className="w-5 h-5" />
                   </div>
                   <div className="font-semibold text-sm">Mission Control</div>
                 </button>
 
-                <div className="my-2 border-t border-gray-100"></div>
+                {/* Game Mode Button */}
+                <button
+                  onClick={() => setActiveTab('game')}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                    activeTab === 'game'
+                      ? `bg-purple-50 text-purple-700 shadow-sm ring-1 ring-purple-200 ${isDarkMode ? 'bg-purple-900/30 text-purple-400 ring-purple-800' : ''}`
+                      : `text-gray-600 hover:bg-gray-50 hover:text-gray-900 ${isDarkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200' : ''}`
+                  }`}
+                >
+                  <div className={`${activeTab === 'game' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`}>
+                    <Gamepad2 className="w-5 h-5" />
+                  </div>
+                  <div className="font-semibold text-sm">Game Mode</div>
+                </button>
+
+                <div className={`my-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}></div>
 
                 {AGENTS.map(agent => {
                   const result = results[agent.id];
                   const isDone = !result.loading && result.content;
-                  // Special check for Mock Interviewer since it's always "ready" once started
                   const isReadyMock = agent.id === AgentType.MOCK_INTERVIEWER && result.content === "Ready to start";
                   
                   return (
@@ -321,11 +357,11 @@ function App() {
                       onClick={() => setActiveTab(agent.id)}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
                         activeTab === agent.id
-                          ? 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          ? `bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200 ${isDarkMode ? 'bg-indigo-900/30 text-indigo-400 ring-indigo-800' : ''}`
+                          : `text-gray-600 hover:bg-gray-50 hover:text-gray-900 ${isDarkMode ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200' : ''}`
                       }`}
                     >
-                      <div className={`${activeTab === agent.id ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      <div className={`${activeTab === agent.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
                         {getIcon(agent.icon)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -341,22 +377,37 @@ function App() {
             </aside>
 
             {/* Mobile Tabs */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 px-2 py-2 flex justify-between overflow-x-auto hide-scrollbar">
+            <div className={`md:hidden fixed bottom-0 left-0 right-0 border-t z-40 px-2 py-2 flex justify-between overflow-x-auto hide-scrollbar ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
                <button
                   onClick={() => setActiveTab('overview')}
                   className={`flex flex-col items-center justify-center p-2 min-w-[70px] rounded-lg ${
-                    activeTab === 'overview' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500'
+                    activeTab === 'overview' 
+                    ? `text-indigo-600 bg-indigo-50 ${isDarkMode ? 'bg-indigo-900/30 text-indigo-400' : ''}` 
+                    : `text-gray-500 ${isDarkMode ? 'text-gray-400' : ''}`
                   }`}
                 >
                   <LayoutDashboard className="w-5 h-5" />
                   <span className="text-[10px] font-medium mt-1 text-center leading-tight">Overview</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('game')}
+                  className={`flex flex-col items-center justify-center p-2 min-w-[70px] rounded-lg ${
+                    activeTab === 'game' 
+                    ? `text-purple-600 bg-purple-50 ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : ''}` 
+                    : `text-gray-500 ${isDarkMode ? 'text-gray-400' : ''}`
+                  }`}
+                >
+                  <Gamepad2 className="w-5 h-5" />
+                  <span className="text-[10px] font-medium mt-1 text-center leading-tight">Game</span>
                 </button>
                {AGENTS.map(agent => (
                   <button
                     key={agent.id}
                     onClick={() => setActiveTab(agent.id)}
                     className={`flex flex-col items-center justify-center p-2 min-w-[70px] rounded-lg ${
-                      activeTab === agent.id ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500'
+                      activeTab === agent.id 
+                      ? `text-indigo-600 bg-indigo-50 ${isDarkMode ? 'bg-indigo-900/30 text-indigo-400' : ''}` 
+                      : `text-gray-500 ${isDarkMode ? 'text-gray-400' : ''}`
                     }`}
                   >
                     {getIcon(agent.icon)}
@@ -366,7 +417,7 @@ function App() {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-hidden relative bg-gray-50/50 p-4 md:p-8 mb-16 md:mb-0">
+            <div className={`flex-1 overflow-hidden relative p-4 md:p-8 mb-16 md:mb-0 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50/50'}`}>
                <div className="max-w-5xl mx-auto h-full">
                   {activeTab === 'overview' ? (
                     <ProcessingOverview 
@@ -376,6 +427,12 @@ function App() {
                       getIcon={getIcon}
                       mockInteractionCount={mockInteractionCount}
                       companyName={input.companyName}
+                    />
+                  ) : activeTab === 'game' ? (
+                    <GameMode 
+                        input={input} 
+                        onExit={() => setActiveTab('overview')}
+                        previousQuestionsContext={results[AgentType.PREVIOUS_QUESTIONS].content}
                     />
                   ) : activeTab === AgentType.MOCK_INTERVIEWER ? (
                     <MockInterviewChat 

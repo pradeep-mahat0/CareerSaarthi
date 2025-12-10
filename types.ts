@@ -40,3 +40,17 @@ export interface ChatMessage {
   text: string;
   audioUrl?: string;
 }
+
+// Game Mode Types
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number; // index 0-3
+  explanation: string;
+}
+
+export interface ResumeGrade {
+  score: number; // 0-100
+  feedback: string[];
+  missingKeywords: string[];
+}

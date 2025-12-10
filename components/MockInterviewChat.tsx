@@ -171,40 +171,40 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px] md:h-[700px]">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px] md:h-[700px] transition-colors duration-300">
         {/* Header */}
-        <div className="p-4 border-b border-gray-100 bg-indigo-50/50 flex items-center justify-between">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-indigo-50/50 dark:bg-gray-900 flex items-center justify-between">
             <div className="flex items-center gap-2">
                 <div className="bg-indigo-600 p-1.5 rounded-lg">
                     <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                    <h3 className="font-bold text-gray-800">Mock Interviewer</h3>
-                    <p className="text-xs text-gray-500">Live AI Simulation</p>
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100">Mock Interviewer</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Live AI Simulation</p>
                 </div>
             </div>
-            <div className="text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium">
+            <div className="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium">
                 Gemini 3 Pro
             </div>
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/30">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/30 dark:bg-gray-900/50">
             {messages.map((msg, idx) => (
                 <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.role === 'model' && (
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                            <Bot className="w-5 h-5 text-indigo-600" />
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
+                            <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                     )}
                     
                     <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
                         msg.role === 'user' 
                             ? 'bg-indigo-600 text-white rounded-tr-none' 
-                            : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'
+                            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none'
                     }`}>
                         {msg.role === 'model' ? (
-                            <div className="prose prose-sm max-w-none">
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
                                 <MarkdownRenderer content={msg.text} />
                             </div>
                         ) : (
@@ -212,10 +212,10 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
                         )}
                         
                         {msg.role === 'model' && (
-                            <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-100">
+                            <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                                 <button 
                                     onClick={() => playMessage(msg.text, idx)}
-                                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+                                    className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
                                     title="Read Aloud"
                                 >
                                     {isPlaying === idx ? <StopCircle className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -233,12 +233,12 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
             ))}
             {loading && (
                 <div className="flex gap-3">
-                     <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                        <Bot className="w-5 h-5 text-indigo-600" />
+                     <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
+                        <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-4 shadow-sm flex items-center gap-2">
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-none p-4 shadow-sm flex items-center gap-2">
                         <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
-                        <span className="text-sm text-gray-500">Thinking...</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Thinking...</span>
                     </div>
                 </div>
             )}
@@ -246,16 +246,16 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white border-t border-gray-100">
+        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-end gap-2 relative">
-                <div className="flex-1 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
+                <div className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
                     <textarea
                         value={currentInput}
                         onChange={(e) => setCurrentInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type your answer here..."
                         rows={1}
-                        className="w-full p-3 bg-transparent border-none focus:ring-0 resize-none max-h-32"
+                        className="w-full p-3 bg-transparent border-none focus:ring-0 resize-none max-h-32 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                         style={{ minHeight: '44px' }}
                     />
                 </div>
@@ -264,8 +264,8 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
                     onClick={isRecording ? stopRecording : startRecording}
                     className={`p-3 rounded-xl flex items-center justify-center transition-all ${
                         isRecording 
-                            ? 'bg-red-50 text-red-600 animate-pulse border border-red-200' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse border border-red-200 dark:border-red-800' 
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     title={isRecording ? "Stop Recording" : "Speak Answer"}
                 >
@@ -280,7 +280,7 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
                     <Send className="w-5 h-5" />
                 </button>
             </div>
-            <p className="text-center text-xs text-gray-400 mt-2">
+            <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">
                 Use the microphone to practice your spoken delivery.
             </p>
         </div>

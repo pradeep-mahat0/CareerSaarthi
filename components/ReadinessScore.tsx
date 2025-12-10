@@ -59,9 +59,9 @@ export const ReadinessScore: React.FC<Props> = ({ results, mockInteractionCount,
   }, 0);
 
   const getProgressColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 50) return 'text-indigo-600';
-    return 'text-amber-500';
+    if (score >= 80) return 'text-green-600 dark:text-green-400';
+    if (score >= 50) return 'text-indigo-600 dark:text-indigo-400';
+    return 'text-amber-500 dark:text-amber-400';
   };
 
   // Generate Suggestion
@@ -80,10 +80,10 @@ export const ReadinessScore: React.FC<Props> = ({ results, mockInteractionCount,
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 relative overflow-hidden transition-colors duration-300">
       {/* Background Decor */}
-      <div className="absolute top-0 right-0 p-4 opacity-5">
-        <Trophy className="w-32 h-32" />
+      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+        <Trophy className="w-32 h-32 dark:text-white" />
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
@@ -92,7 +92,7 @@ export const ReadinessScore: React.FC<Props> = ({ results, mockInteractionCount,
         <div className="relative flex items-center justify-center shrink-0">
             <svg className="w-32 h-32 transform -rotate-90">
                 <circle
-                    className="text-gray-100"
+                    className="text-gray-100 dark:text-gray-700"
                     strokeWidth="8"
                     stroke="currentColor"
                     fill="transparent"
@@ -101,7 +101,7 @@ export const ReadinessScore: React.FC<Props> = ({ results, mockInteractionCount,
                     cy="64"
                 />
                 <circle
-                    className={`${totalScore >= 80 ? 'text-green-500' : totalScore >= 50 ? 'text-indigo-500' : 'text-amber-500'} transition-all duration-1000 ease-out`}
+                    className={`${totalScore >= 80 ? 'text-green-500 dark:text-green-400' : totalScore >= 50 ? 'text-indigo-500 dark:text-indigo-400' : 'text-amber-500 dark:text-amber-400'} transition-all duration-1000 ease-out`}
                     strokeWidth="8"
                     strokeDasharray={365}
                     strokeDashoffset={365 - (365 * totalScore) / 100}
@@ -115,49 +115,35 @@ export const ReadinessScore: React.FC<Props> = ({ results, mockInteractionCount,
             </svg>
             <div className="absolute flex flex-col items-center">
                 <span className={`text-3xl font-bold ${getProgressColor(totalScore)}`}>{totalScore}%</span>
-                <span className="text-xs text-gray-500 font-medium uppercase">Ready</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase">Ready</span>
             </div>
         </div>
 
         {/* Text Content */}
         <div className="flex-1 w-full text-center md:text-left">
-            <h3 className="text-xl font-bold text-gray-800 mb-1">
-                Placement Readiness for <span className="text-indigo-600">{companyName}</span>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-1">
+                Placement Readiness for <span className="text-indigo-600 dark:text-indigo-400">{companyName}</span>
             </h3>
-            <p className="text-gray-500 text-sm mb-4">
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
                 {getSuggestion()}
             </p>
 
-            {/* Actionable Suggestions / Checklist */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                {RULES.map((rule) => {
-                    const isDone = rule.check();
-                    const partialScore = rule.isPartial && rule.currentPoints ? rule.currentPoints() : 0;
-                    // For mock interview, show partial progress if not fully done
-                    const showPartial = rule.id === 'mock' && !isDone && partialScore > 0;
-
+            {/* Checklist */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                {RULES.map(rule => {
+                    const isCompleted = rule.check();
                     return (
-                        <div key={rule.id} className="flex items-center gap-2 text-gray-600">
-                             {isDone ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                            ) : showPartial ? (
-                                <div className="w-4 h-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin shrink-0" /> 
-                            ) : (
-                                <Circle className="w-4 h-4 text-gray-300 shrink-0" />
-                            )}
-                            
-                            <span className={isDone ? 'text-gray-800 font-medium' : ''}>
-                                {rule.label} 
-                                {rule.id === 'mock' && !isDone ? ` (${mockInteractionCount}/3)` : ''}
-                            </span>
-                            
-                            {!isDone && (
-                                <span className="text-xs text-indigo-500 font-semibold ml-auto">
-                                    +{rule.id === 'mock' ? 10 : rule.points}%
-                                </span>
-                            )}
+                        <div key={rule.id} className="flex items-center gap-2">
+                             {isCompleted ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-500 dark:text-green-400 shrink-0" />
+                             ) : (
+                                <Circle className="w-4 h-4 text-gray-300 dark:text-gray-600 shrink-0" />
+                             )}
+                             <span className={`${isCompleted ? 'text-gray-700 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}`}>
+                                {rule.label}
+                             </span>
                         </div>
-                    );
+                    )
                 })}
             </div>
         </div>

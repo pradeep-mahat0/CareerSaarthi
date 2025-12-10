@@ -1,7 +1,6 @@
 import React from 'react';
 import { AgentType, AgentResult, AgentConfig } from '../types';
 import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Download, Printer } from 'lucide-react';
-import { ReadinessScore } from './ReadinessScore';
 
 interface Props {
   results: Record<AgentType, AgentResult>;
@@ -109,92 +108,88 @@ export const ProcessingOverview: React.FC<Props> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-8">
-      {/* Score Header */}
-      <ReadinessScore 
-        results={results} 
-        mockInteractionCount={mockInteractionCount} 
-        companyName={companyName} 
-      />
+    <div className="h-full overflow-y-auto p-1">
+      <div className="max-w-4xl mx-auto space-y-8 py-8">
+        
+        {/* Export Actions */}
+        {hasAnyContent && (
+          <div className="flex flex-wrap items-center justify-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <button
+              onClick={handleDownloadMarkdown}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm text-sm font-medium"
+              >
+              <Download className="w-4 h-4" />
+              Download Markdown
+              </button>
+              <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm text-sm font-medium"
+              >
+              <Printer className="w-4 h-4" />
+              Print / Save PDF
+              </button>
+          </div>
+        )}
 
-      {/* Export Actions */}
-      {hasAnyContent && (
-        <div className="flex flex-wrap items-center justify-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <button
-            onClick={handleDownloadMarkdown}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors shadow-sm text-sm font-medium"
-            >
-            <Download className="w-4 h-4" />
-            Download Markdown
-            </button>
-            <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors shadow-sm text-sm font-medium"
-            >
-            <Printer className="w-4 h-4" />
-            Print / Save PDF
-            </button>
-        </div>
-      )}
+        {/* Agents Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {agents.map((agent) => {
+            const result = results[agent.id];
+            const isDone = !result.loading && result.content;
+            const isError = !result.loading && result.error;
+            const isLoading = result.loading;
 
-      {/* Agents Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {agents.map((agent) => {
-          const result = results[agent.id];
-          const isDone = !result.loading && result.content;
-          const isError = !result.loading && result.error;
-          const isLoading = result.loading;
-
-          return (
-            <button
-              key={agent.id}
-              onClick={() => onSelectAgent(agent.id)}
-              className={`
-                relative group flex items-start gap-4 p-5 rounded-xl border transition-all text-left w-full
-                ${isDone 
-                  ? 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md cursor-pointer' 
-                  : isLoading 
-                    ? 'bg-white border-indigo-100 shadow-sm ring-1 ring-indigo-50 cursor-pointer'
-                    : 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
-                }
-              `}
-            >
-              <div className={`
-                p-3 rounded-lg shrink-0 transition-colors
-                ${isDone ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}
-                ${isLoading ? 'bg-indigo-50 text-indigo-500' : ''}
-              `}>
-                {getIcon(agent.icon)}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className={`font-semibold ${isDone || isLoading ? 'text-gray-900' : 'text-gray-500'}`}>
-                    {agent.title}
-                  </h3>
-                  {isLoading && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
-                  {isDone && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-                  {isError && <AlertCircle className="w-5 h-5 text-red-500" />}
+            return (
+              <button
+                key={agent.id}
+                onClick={() => onSelectAgent(agent.id)}
+                className={`
+                  relative group flex items-start gap-4 p-5 rounded-xl border transition-all text-left w-full
+                  ${isDone 
+                    ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md cursor-pointer' 
+                    : isLoading 
+                      ? 'bg-white dark:bg-gray-800 border-indigo-100 dark:border-indigo-900 shadow-sm ring-1 ring-indigo-50 dark:ring-indigo-900 cursor-pointer'
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-60 cursor-not-allowed'
+                  }
+                `}
+              >
+                <div className={`
+                  p-3 rounded-lg shrink-0 transition-colors
+                  ${isDone ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}
+                  ${isLoading ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400' : ''}
+                `}>
+                  {getIcon(agent.icon)}
                 </div>
-                
-                <p className="text-sm text-gray-500 line-clamp-2">
-                  {agent.description}
-                </p>
 
-                {isDone && (
-                  <div className="mt-3 flex items-center text-xs font-medium text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    View Results <ArrowRight className="w-3 h-3 ml-1" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className={`font-semibold ${isDone || isLoading ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'}`}>
+                      {agent.title}
+                    </h3>
+                    {isLoading && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+                    {isDone && <CheckCircle2 className="w-5 h-5 text-green-500 dark:text-green-400" />}
+                    {isError && <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />}
                   </div>
-                )}
-                 {isLoading && (
-                  <div className="mt-3 text-xs text-indigo-500 animate-pulse">
-                    Processing...
-                  </div>
-                )}
-              </div>
-            </button>
-          );
-        })}
+                  
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                    {agent.description}
+                  </p>
+
+                  {isDone && (
+                    <div className="mt-3 flex items-center text-xs font-medium text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                      View Results <ArrowRight className="w-3 h-3 ml-1" />
+                    </div>
+                  )}
+                   {isLoading && (
+                    <div className="mt-3 text-xs text-indigo-500 dark:text-indigo-400 animate-pulse">
+                      Processing...
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

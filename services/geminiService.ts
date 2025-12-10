@@ -1,5 +1,5 @@
-import { GoogleGenAI, Tool, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { AgentType, AgentResult, UserInput, GroundingSource } from "../types";
+import { GoogleGenAI, Tool, GenerateContentResponse, Chat, Modality, Type, Schema } from "@google/genai";
+import { AgentType, AgentResult, UserInput, GroundingSource, QuizQuestion, ResumeGrade } from "../types";
 
 const createClient = () => {
   const apiKey = process.env.API_KEY;
@@ -7,6 +7,33 @@ const createClient = () => {
     throw new Error("API_KEY environment variable is not set");
   }
   return new GoogleGenAI({ apiKey });
+};
+
+// Helper to clean JSON string from Markdown code blocks
+const cleanAndParseJSON = (text: string): any => {
+  try {
+    // Remove markdown code block syntax if present
+    let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Occasionally models add a prefix text, try to find the first [ or {
+    const firstBracket = cleanText.indexOf('[');
+    const firstBrace = cleanText.indexOf('{');
+    
+    // If we find brackets/braces, slice from there to ensure we get the JSON part
+    if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+       cleanText = cleanText.substring(firstBracket);
+       const lastBracket = cleanText.lastIndexOf(']');
+       if (lastBracket !== -1) cleanText = cleanText.substring(0, lastBracket + 1);
+    } else if (firstBrace !== -1) {
+       cleanText = cleanText.substring(firstBrace);
+       const lastBrace = cleanText.lastIndexOf('}');
+       if (lastBrace !== -1) cleanText = cleanText.substring(0, lastBrace + 1);
+    }
+
+    return JSON.parse(cleanText);
+  } catch (e) {
+    console.error("JSON Parsing Failed:", e, "Original Text:", text);
+    return null;
+  }
 };
 
 // Helper to extract grounding sources
@@ -362,4 +389,108 @@ export const generateSpeech = async (text: string): Promise<string> => {
     }
     
     return `data:audio/mp3;base64,${base64Audio}`;
+};
+
+// --- Game Mode Services ---
+
+export const generateGameQuiz = async (input: UserInput): Promise<QuizQuestion[]> => {
+    const ai = createClient();
+    const prompt = `
+        Generate 5 multiple-choice questions to test a candidate's knowledge about ${input.companyName}.
+        Topics: Values, Mission, Products, Recent News, Work Culture.
+        Ensure options are plausible.
+        Output ONLY the JSON array.
+    `;
+
+    // Removed responseSchema due to incompatibility with googleSearch tool
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                // responseMimeType and responseSchema are prohibited with googleSearch
+                tools: [{ googleSearch: {} }] // Use search for accurate company info
+            }
+        });
+        
+        if (response.text) {
+            return cleanAndParseJSON(response.text) as QuizQuestion[];
+        }
+        return [];
+    } catch (e) {
+        console.error("Quiz Gen Error", e);
+        return [];
+    }
+};
+
+export const generateResumeGrade = async (input: UserInput): Promise<ResumeGrade> => {
+    const ai = createClient();
+    const prompt = `
+        Evaluate this resume for the role of ${input.jobRole} at ${input.companyName}.
+        Resume: """${input.resumeContent}"""
+        JD: """${input.jobDescription}"""
+        
+        Provide a score (0-100), key feedback points, and missing keywords.
+        Output ONLY the JSON object.
+    `;
+
+    const schema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+            score: { type: Type.INTEGER },
+            feedback: { type: Type.ARRAY, items: { type: Type.STRING } },
+            missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["score", "feedback", "missingKeywords"]
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema
+            }
+        });
+        
+        if (response.text) {
+            return cleanAndParseJSON(response.text) as ResumeGrade;
+        }
+        return { score: 0, feedback: ["Failed to grade due to error"], missingKeywords: [] };
+    } catch (e) {
+        console.error("Resume Grade Error", e);
+        return { score: 0, feedback: ["Error evaluating resume"], missingKeywords: [] };
+    }
+};
+
+export const getImportantQuestionsList = async (input: UserInput): Promise<string[]> => {
+    const ai = createClient();
+    const prompt = `
+        List 10 most frequently asked interview questions for ${input.jobRole} at ${input.companyName}.
+        Return just the questions as strings.
+        Output ONLY the JSON array.
+    `;
+
+    // Removed responseSchema due to incompatibility with googleSearch tool
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                // responseMimeType and responseSchema are prohibited with googleSearch
+                tools: [{ googleSearch: {} }]
+            }
+        });
+        
+        if (response.text) {
+            return cleanAndParseJSON(response.text) as string[];
+        }
+        return [];
+    } catch (e) {
+        console.error("Question List Gen Error", e);
+        return [];
+    }
 };
