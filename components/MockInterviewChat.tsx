@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Chat } from '@google/genai';
 import { createChatSession, transcribeAudio, generateSpeech } from '../services/geminiService';
 import { UserInput, ChatMessage } from '../types';
-import { Send, Mic, Loader2, Volume2, User, Bot, StopCircle } from 'lucide-react';
+import { Send, Mic, Loader2, Volume2, User, Bot, StopCircle, XCircle } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface Props {
@@ -16,6 +16,7 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
   const [currentInput, setCurrentInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [chatSession, setChatSession] = useState<Chat | null>(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
   
   // Audio State
   const [isRecording, setIsRecording] = useState(false);
@@ -55,7 +56,7 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!currentInput.trim() || !chatSession || loading) return;
+    if (!currentInput.trim() || !chatSession || loading || sessionEnded) return;
 
     const userMsg: ChatMessage = { role: 'user', text: currentInput };
     setMessages(prev => [...prev, userMsg]);
@@ -87,8 +88,22 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
     }
   };
 
+  const endSession = () => {
+      if (isRecording) stopRecording();
+      if (audioRef.current) audioRef.current.pause();
+      
+      setSessionEnded(true);
+      setMessages(prev => [...prev, { role: 'model', text: "**Interview Session Ended.** \n\nGood job practicing! Review your answers above or start a new analysis to try again." }]);
+  };
+
   // Audio Recording Logic
   const startRecording = async () => {
+    if (sessionEnded) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Audio recording is not supported in this browser.");
+        return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -108,8 +123,11 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
         try {
             const transcription = await transcribeAudio(audioBlob);
             setCurrentInput(prev => prev + (prev ? ' ' : '') + transcription);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Transcription failed", err);
+            let errorMsg = "Could not transcribe audio.";
+            if (err.message?.includes("API key")) errorMsg = "Transcription failed: Check API Key.";
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -120,9 +138,19 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
 
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Could not access microphone", err);
-      alert("Microphone access denied or not available.");
+      let errorMsg = "Microphone access failed.";
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          errorMsg = "Microphone permission denied. Please allow access in your browser settings.";
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          errorMsg = "No microphone found. Please connect a microphone.";
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          errorMsg = "Microphone is busy or not readable. Check if another app is using it.";
+      }
+      
+      alert(errorMsg);
     }
   };
 
@@ -164,16 +192,20 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
         audioRef.current = audio;
         setIsPlaying(index);
 
-    } catch (e) {
+    } catch (e: any) {
         console.error("TTS Failed", e);
-        alert("Could not generate audio.");
+        let errorMsg = "Could not generate audio.";
+        const errStr = e.message || String(e);
+        if (errStr.includes("API key")) errorMsg = "TTS failed: Invalid API Key.";
+        else if (errStr.includes("quota")) errorMsg = "TTS failed: Usage limit exceeded.";
+        alert(errorMsg);
     }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px] md:h-[700px] transition-colors duration-300">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full transition-colors duration-300">
         {/* Header */}
-        <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-indigo-50/50 dark:bg-gray-900 flex items-center justify-between">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-indigo-50/50 dark:bg-gray-900 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
                 <div className="bg-indigo-600 p-1.5 rounded-lg">
                     <Bot className="w-5 h-5 text-white" />
@@ -183,8 +215,21 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
                     <p className="text-xs text-gray-500 dark:text-gray-400">Live AI Simulation</p>
                 </div>
             </div>
-            <div className="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium">
-                Gemini 3 Pro
+            
+            <div className="flex items-center gap-2">
+                 <div className="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium">
+                    Gemini 3 Pro
+                </div>
+                {!sessionEnded && (
+                    <button 
+                        onClick={endSession}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg text-xs font-bold transition-colors"
+                        title="End Session"
+                    >
+                        <XCircle className="w-4 h-4" />
+                        End Session
+                    </button>
+                )}
             </div>
         </div>
 
@@ -246,27 +291,29 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shrink-0">
             <div className="flex items-end gap-2 relative">
                 <div className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
                     <textarea
                         value={currentInput}
                         onChange={(e) => setCurrentInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type your answer here..."
+                        placeholder={sessionEnded ? "Session Ended" : "Type your answer here..."}
                         rows={1}
-                        className="w-full p-3 bg-transparent border-none focus:ring-0 resize-none max-h-32 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        disabled={sessionEnded}
+                        className="w-full p-3 bg-transparent border-none focus:ring-0 resize-none max-h-32 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ minHeight: '44px' }}
                     />
                 </div>
 
                 <button
                     onClick={isRecording ? stopRecording : startRecording}
+                    disabled={sessionEnded}
                     className={`p-3 rounded-xl flex items-center justify-center transition-all ${
                         isRecording 
                             ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse border border-red-200 dark:border-red-800' 
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    } ${sessionEnded ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={isRecording ? "Stop Recording" : "Speak Answer"}
                 >
                     {isRecording ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -274,15 +321,21 @@ export const MockInterviewChat: React.FC<Props> = ({ input, previousQuestionsCon
 
                 <button
                     onClick={handleSendMessage}
-                    disabled={!currentInput.trim() || loading}
+                    disabled={!currentInput.trim() || loading || sessionEnded}
                     className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                 >
                     <Send className="w-5 h-5" />
                 </button>
             </div>
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">
-                Use the microphone to practice your spoken delivery.
-            </p>
+            {!sessionEnded ? (
+                <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    Use the microphone to practice your spoken delivery.
+                </p>
+            ) : (
+                 <p className="text-center text-xs text-red-400 dark:text-red-400 mt-2 font-medium">
+                    Session Ended. Please start a new analysis to restart.
+                </p>
+            )}
         </div>
     </div>
   );

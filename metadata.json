@@ -1,5 +1,5 @@
 {
-  "name": "PlacementPrep.AI",
+  "name": "CareerSaarthi",
   "description": "A comprehensive multi-agent AI system for placement preparation, offering company research, resume optimization, recruitment process insights, and interview question practice.",
   "requestFramePermissions": [
     "microphone"

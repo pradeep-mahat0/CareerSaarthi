@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AgentResult, AgentType } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { Loader2, AlertCircle, ExternalLink, RefreshCw, Info, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, ExternalLink, RefreshCw, Info, Sparkles, CheckCircle2, Share2, Check } from 'lucide-react';
 
 interface Props {
   agentType: AgentType;
@@ -14,6 +14,15 @@ interface Props {
 
 export const AgentResultCard: React.FC<Props> = ({ agentType, result, title, description, icon, onRetry }) => {
   const isDone = !result.loading && result.content && !result.error;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (result.content) {
+      navigator.clipboard.writeText(result.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full transition-all duration-500 ease-in-out">
@@ -35,7 +44,6 @@ export const AgentResultCard: React.FC<Props> = ({ agentType, result, title, des
                   : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
               }
             `}>
-              {/* Clone icon to apply specific sizing if needed, or wrap */}
               <div className="w-6 h-6 flex items-center justify-center">{icon}</div>
             </div>
             <div>
@@ -48,7 +56,17 @@ export const AgentResultCard: React.FC<Props> = ({ agentType, result, title, des
             </div>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
+            {isDone && (
+              <button 
+                onClick={handleCopy}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                title="Share / Copy to Clipboard"
+              >
+                {copied ? <Check className="w-5 h-5 text-green-500" /> : <Share2 className="w-5 h-5" />}
+              </button>
+            )}
+
             {result.loading && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-full text-xs font-semibold animate-pulse border border-indigo-100 dark:border-indigo-800">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -56,7 +74,7 @@ export const AgentResultCard: React.FC<Props> = ({ agentType, result, title, des
               </div>
             )}
             {isDone && (
-               <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs font-bold px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full border border-green-100 dark:border-green-800 animate-in fade-in zoom-in duration-300">
+               <div className="hidden sm:flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs font-bold px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full border border-green-100 dark:border-green-800 animate-in fade-in zoom-in duration-300">
                  <CheckCircle2 className="w-3.5 h-3.5" />
                  Complete
                </div>

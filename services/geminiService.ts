@@ -1,4 +1,4 @@
-import { GoogleGenAI, Tool, GenerateContentResponse, Chat, Modality, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Tool, GenerateContentResponse, Chat, Modality, Type, Schema, Part } from "@google/genai";
 import { AgentType, AgentResult, UserInput, GroundingSource, QuizQuestion, ResumeGrade } from "../types";
 
 const createClient = () => {
@@ -119,7 +119,6 @@ export const runAgent = async (
      };
   }
 
-  // Agent 6 is interactive and handled via createChatSession, but we return a placeholder here to satisfy the loop.
   if (agentType === AgentType.MOCK_INTERVIEWER) {
       return {
           content: "Ready to start",
@@ -127,14 +126,14 @@ export const runAgent = async (
       };
   }
 
-  let prompt = "";
+  let parts: Part[] = [];
   let useSearch = false;
   let modelId = 'gemini-2.5-flash';
 
   switch (agentType) {
     case AgentType.COMPANY_RESEARCH:
       useSearch = true;
-      prompt = `
+      parts.push({ text: `
         You are an expert Company Research Agent.
         Target Company: "${input.companyName}"
         
@@ -146,40 +145,46 @@ export const runAgent = async (
         5. A section on "Key Points for Interviews" highlighting what a candidate should mention to impress.
         
         Format the output in clean Markdown. Use bullet points and headers.
-      `;
+      `});
       break;
 
     case AgentType.RESUME_OPTIMIZATION:
-      // Resume optimization benefits from higher reasoning.
-      prompt = `
+      parts.push({ text: `
         You are an expert Resume Optimization Agent.
-        
         Job Role: "${input.jobRole}"
         Target Company: "${input.companyName}"
         
         Job Description (JD):
-        """
-        ${input.jobDescription || "No specific JD provided. Optimize generally for the role."}
-        """
-        
-        Candidate's Current Resume Content:
-        """
-        ${input.resumeContent || "No resume content provided. List key skills and keywords required for this role instead."}
-        """
-        
-        Task:
+      `});
+
+      if (input.jobDescriptionFile) {
+        parts.push({ inlineData: { mimeType: input.jobDescriptionFile.mimeType, data: input.jobDescriptionFile.data }});
+      } else {
+        parts.push({ text: `"""\n${input.jobDescription || "No specific JD provided. Optimize generally for the role."}\n"""` });
+      }
+
+      parts.push({ text: `\n\nCandidate's Current Resume Content:\n` });
+
+      if (input.resumeFile) {
+        parts.push({ inlineData: { mimeType: input.resumeFile.mimeType, data: input.resumeFile.data }});
+      } else {
+        parts.push({ text: `"""\n${input.resumeContent || "No resume content provided. List key skills and keywords required for this role instead."}\n"""` });
+      }
+
+      parts.push({ text: `
+        \nTask:
         1. Analyze the JD and identify key skills, keywords, and tools required.
-        2. Review the candidate's resume content (if provided) against these requirements.
+        2. Review the candidate's resume content against these requirements.
         3. Suggest specific improvements, re-phrased bullet points, and formatting tips to make it ATS-friendly.
         4. If no resume is provided, create a "Ideal Resume Structure" for this role with suggested content.
         
         Format as Markdown. Be critical and constructive.
-      `;
+      `});
       break;
 
     case AgentType.RECRUITMENT_PROCESS:
       useSearch = true;
-      prompt = `
+      parts.push({ text: `
         You are a Recruitment Process Research Agent.
         Target Company: "${input.companyName}"
         Target Role: "${input.jobRole}"
@@ -192,12 +197,12 @@ export const runAgent = async (
         4. For HR/Managerial Rounds: Behavioral competencies evaluated.
         
         Format as Markdown.
-      `;
+      `});
       break;
 
     case AgentType.PREVIOUS_QUESTIONS:
       useSearch = true;
-      prompt = `
+      parts.push({ text: `
         You are a Previous Questions Aggregator Agent.
         Target Company: "${input.companyName}"
         Target Role: "${input.jobRole}"
@@ -212,24 +217,35 @@ export const runAgent = async (
         
         Provide brief hints or "What they are looking for" for difficult questions.
         Format as Markdown.
-      `;
+      `});
       break;
 
     case AgentType.HR_ANSWER_GENERATION:
       useSearch = false;
-      prompt = `
+      parts.push({ text: `
         You are an expert HR Interview Coach and Answer Generator.
-        
         Target Company: "${input.companyName}"
         Target Role: "${input.jobRole}"
         
         Job Description:
-        """${input.jobDescription || "Not provided."}"""
-        
-        Candidate Profile (Resume Context):
-        """${input.resumeContent || "Not provided. Use generic placeholders like [My Project] or [My Previous Role] where necessary."}"""
-        
-        Your Goal:
+      `});
+
+      if (input.jobDescriptionFile) {
+        parts.push({ inlineData: { mimeType: input.jobDescriptionFile.mimeType, data: input.jobDescriptionFile.data }});
+      } else {
+        parts.push({ text: `"""${input.jobDescription || "Not provided."}"""` });
+      }
+
+      parts.push({ text: `\nCandidate Profile (Resume Context):\n` });
+
+      if (input.resumeFile) {
+        parts.push({ inlineData: { mimeType: input.resumeFile.mimeType, data: input.resumeFile.data }});
+      } else {
+        parts.push({ text: `"""${input.resumeContent || "Not provided. Use generic placeholders like [My Project] or [My Previous Role] where necessary."}"""` });
+      }
+
+      parts.push({ text: `
+        \nYour Goal:
         Generate the best possible HR interview answers tailored to the candidate's profile and the company's culture.
         
         Instructions:
@@ -247,7 +263,7 @@ export const runAgent = async (
         Format the output in Markdown. For each question, provide:
         - **The Strategy:** A brief tip on what the interviewer is looking for.
         - **The Answer:** The spoken response script.
-      `;
+      `});
       break;
   }
 
@@ -256,7 +272,7 @@ export const runAgent = async (
   try {
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: prompt,
+      contents: { parts },
       config: {
         tools: tools,
       }
@@ -289,6 +305,19 @@ export const runAgent = async (
 export const createChatSession = (input: UserInput, previousQuestionsContext?: string): Chat => {
     const ai = createClient();
     
+    // Construct system instruction based on text data only, as systemInstruction is text-only.
+    // If files are present, we might want to send them in the first message history, but here we just
+    // assume context is passed effectively or reliance on resume text if extracted.
+    // Since we upgraded App to store files, we can't easily put binary data in systemInstruction.
+    // We will inject a note in system instruction.
+    
+    let resumeContext = "";
+    if (input.resumeContent) {
+        resumeContext = `Resume Text: """${input.resumeContent}"""`;
+    } else if (input.resumeFile) {
+        resumeContext = `Resume provided as attachment in context.`;
+    }
+
     const systemInstruction = `
         You are Agent 6: The Mock Interviewer.
         Target Company: "${input.companyName}"
@@ -298,6 +327,8 @@ export const createChatSession = (input: UserInput, previousQuestionsContext?: s
         """
         ${previousQuestionsContext || "No specific previous questions found. Use general standard interview questions for this role."}
         """
+
+        ${resumeContext}
 
         Your role is to simulate a realistic interview environment for the user.
         
@@ -402,15 +433,12 @@ export const generateGameQuiz = async (input: UserInput): Promise<QuizQuestion[]
         Output ONLY the JSON array.
     `;
 
-    // Removed responseSchema due to incompatibility with googleSearch tool
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
-                // responseMimeType and responseSchema are prohibited with googleSearch
-                tools: [{ googleSearch: {} }] // Use search for accurate company info
+                tools: [{ googleSearch: {} }] 
             }
         });
         
@@ -426,14 +454,30 @@ export const generateGameQuiz = async (input: UserInput): Promise<QuizQuestion[]
 
 export const generateResumeGrade = async (input: UserInput): Promise<ResumeGrade> => {
     const ai = createClient();
-    const prompt = `
+    
+    const parts: Part[] = [{ text: `
         Evaluate this resume for the role of ${input.jobRole} at ${input.companyName}.
-        Resume: """${input.resumeContent}"""
-        JD: """${input.jobDescription}"""
-        
+        Job Description:
+    `}];
+
+    if (input.jobDescriptionFile) {
+        parts.push({ inlineData: { mimeType: input.jobDescriptionFile.mimeType, data: input.jobDescriptionFile.data }});
+    } else {
+        parts.push({ text: `"""${input.jobDescription || "Standard role expectations"}"""` });
+    }
+
+    parts.push({ text: `\nResume:\n` });
+
+    if (input.resumeFile) {
+         parts.push({ inlineData: { mimeType: input.resumeFile.mimeType, data: input.resumeFile.data }});
+    } else {
+         parts.push({ text: `"""${input.resumeContent}"""` });
+    }
+
+    parts.push({ text: `
         Provide a score (0-100), key feedback points, and missing keywords.
         Output ONLY the JSON object.
-    `;
+    `});
 
     const schema: Schema = {
         type: Type.OBJECT,
@@ -448,7 +492,7 @@ export const generateResumeGrade = async (input: UserInput): Promise<ResumeGrade
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: { parts },
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema
@@ -473,14 +517,11 @@ export const getImportantQuestionsList = async (input: UserInput): Promise<strin
         Output ONLY the JSON array.
     `;
 
-    // Removed responseSchema due to incompatibility with googleSearch tool
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
-                // responseMimeType and responseSchema are prohibited with googleSearch
                 tools: [{ googleSearch: {} }]
             }
         });

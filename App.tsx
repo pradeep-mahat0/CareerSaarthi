@@ -14,9 +14,16 @@ import {
   Bot,
   Gamepad2,
   Sun,
-  Moon
+  Moon,
+  X,
+  FileIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  ChevronLeft,
+  Rocket
 } from 'lucide-react';
-import { AgentType, AgentResult, UserInput, AgentConfig } from './types';
+import { AgentType, AgentResult, UserInput, AgentConfig, FileData } from './types';
 import { runAgent } from './services/geminiService';
 import { AgentResultCard } from './components/AgentResultCard';
 import { ProcessingOverview } from './components/ProcessingOverview';
@@ -83,6 +90,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mockInteractionCount, setMockInteractionCount] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -97,13 +105,45 @@ function App() {
     setInput(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'resume' | 'jd') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Simple text reading
-    const text = await file.text();
-    setInput(prev => ({ ...prev, resumeContent: text }));
+    if (file.type === 'text/plain' || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+      const text = await file.text();
+      setInput(prev => ({ 
+        ...prev, 
+        [field === 'resume' ? 'resumeContent' : 'jobDescription']: text,
+        [field === 'resume' ? 'resumeFile' : 'jobDescriptionFile']: undefined 
+      }));
+    } else {
+      // Handle PDF/Doc/Binary
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        // Strip data url prefix for API
+        const base64Data = base64String.split(',')[1];
+        
+        const fileData: FileData = {
+          mimeType: file.type || 'application/pdf', // Default to PDF if unknown, though browser usually detects
+          data: base64Data
+        };
+
+        setInput(prev => ({ 
+          ...prev, 
+          [field === 'resume' ? 'resumeFile' : 'jobDescriptionFile']: fileData,
+          [field === 'resume' ? 'resumeContent' : 'jobDescription']: '' // Clear text content if file is used
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearFile = (field: 'resume' | 'jd') => {
+      setInput(prev => ({
+          ...prev,
+          [field === 'resume' ? 'resumeFile' : 'jobDescriptionFile']: undefined
+      }));
   };
 
   const startAnalysis = useCallback(() => {
@@ -162,21 +202,91 @@ function App() {
     }
   };
 
+  const renderUploadBox = (field: 'resume' | 'jd', label: string) => {
+      const isFileUploaded = field === 'resume' ? !!input.resumeFile : !!input.jobDescriptionFile;
+      const hasTextContent = field === 'resume' ? !!input.resumeContent : !!input.jobDescription;
+      
+      return (
+        <div className="flex flex-col md:flex-row gap-4 h-full">
+            <div className="flex-1 relative h-full">
+                <textarea
+                name={field === 'resume' ? 'resumeContent' : 'jobDescription'}
+                value={field === 'resume' ? input.resumeContent : input.jobDescription}
+                onChange={handleInputChange}
+                rows={6}
+                disabled={isFileUploaded}
+                placeholder={isFileUploaded ? "File attached. Remove file to edit text." : `Paste ${label} here...`}
+                className={`block w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm h-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 disabled:bg-gray-800' : 'bg-white border-gray-300 text-gray-900 disabled:bg-gray-50'}`}
+                />
+                {(hasTextContent || isFileUploaded) && (
+                <div className="absolute top-2 right-2 flex items-center gap-2">
+                     {isFileUploaded ? (
+                        <div className="text-indigo-600 bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                            <FileIcon className="w-3 h-3" /> File Attached
+                            <button onClick={() => clearFile(field)} className="ml-1 hover:text-indigo-800"><X className="w-3 h-3" /></button>
+                        </div>
+                     ) : (
+                        <div className="text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Text
+                        </div>
+                     )}
+                </div>
+                )}
+            </div>
+            
+            <div className="flex md:flex-col items-center justify-center gap-3 md:w-48 shrink-0">
+                <div className={`w-full h-px md:hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                <span className={`text-sm font-medium whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>OR</span>
+                <div className={`w-full h-px md:hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                
+                <label className={`w-full h-full flex flex-col items-center justify-center px-4 py-4 border-2 border-dashed rounded-lg cursor-pointer transition-all group text-center ${isDarkMode ? 'border-gray-600 hover:border-indigo-500 hover:bg-gray-700' : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50'}`}>
+                <Upload className={`w-8 h-8 mb-2 ${isDarkMode ? 'text-gray-500 group-hover:text-indigo-400' : 'text-gray-400 group-hover:text-indigo-500'}`} />
+                <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Upload .pdf/.doc/.txt</span>
+                <input 
+                    type="file" 
+                    className="hidden" 
+                    accept=".txt,.md,.pdf,.doc,.docx" 
+                    onChange={(e) => handleFileUpload(e, field)} 
+                />
+                </label>
+            </div>
+        </div>
+      );
+  }
+
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Navbar */}
       <nav className={`border-b sticky top-0 z-50 transition-colors duration-300 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="bg-indigo-600 p-2 rounded-lg">
-                <Sparkles className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-3">
+              {step === 'results' && (
+                <button 
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className={`hidden md:flex p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                  title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+                >
+                  {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                </button>
+              )}
+              <div className="flex items-center gap-2">
+                <div className="bg-gradient-to-tr from-indigo-600 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+                    <Rocket className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 hidden sm:block">
+                  CareerSaarthi
+                </span>
+                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 sm:hidden">
+                  CareerSaarthi
+                </span>
               </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">
-                PlacementPrep.AI
-              </span>
             </div>
             <div className="flex items-center gap-4">
+                <div className="hidden lg:flex items-center text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
+                  Made with <span className="text-red-500 mx-1 animate-pulse">❤️</span> using Gemini
+                </div>
+
                 <button 
                     onClick={() => setIsDarkMode(!isDarkMode)}
                     className={`p-2 rounded-full transition-colors ${isDarkMode ? 'bg-gray-700 text-yellow-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
@@ -187,9 +297,14 @@ function App() {
                 {step === 'results' && (
                 <button 
                     onClick={() => setStep('input')}
-                    className={`text-sm font-medium hover:text-indigo-500 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        isDarkMode 
+                        ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'
+                    }`}
                 >
-                    New Analysis
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">New Analysis</span>
                 </button>
                 )}
             </div>
@@ -202,8 +317,11 @@ function App() {
         {step === 'input' ? (
           <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8 overflow-y-auto h-full">
             <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center p-3 mb-6 bg-indigo-50 dark:bg-gray-800 rounded-2xl shadow-sm border border-indigo-100 dark:border-gray-700">
+                 <Rocket className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+              </div>
               <h1 className={`text-4xl font-extrabold tracking-tight sm:text-5xl mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                Master Your <span className="text-indigo-500">Dream Job</span> Interview
+                Get Placed. <span className="text-indigo-500">Get Ahead.</span>
               </h1>
               <p className={`text-xl max-w-2xl mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 Deploy specialized AI agents to research the company, decode the recruitment process, find past questions, optimize your resume, and practice with a live mock interviewer.
@@ -250,47 +368,12 @@ function App() {
 
                 <div className="space-y-4">
                   <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Job Description (Optional)</label>
-                  <textarea
-                    name="jobDescription"
-                    value={input.jobDescription}
-                    onChange={handleInputChange}
-                    rows={4}
-                    placeholder="Paste the job description here for better resume tailoring and HR answer generation..."
-                    className={`block w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
+                  {renderUploadBox('jd', 'JD')}
                 </div>
 
                 <div className="space-y-4">
                   <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Your Resume (Optional)</label>
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                       <textarea
-                        name="resumeContent"
-                        value={input.resumeContent}
-                        onChange={handleInputChange}
-                        rows={6}
-                        placeholder="Paste your resume text here..."
-                        className={`block w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-mono ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
-                      />
-                      {input.resumeContent && (
-                        <div className="absolute top-2 right-2 text-green-600 bg-green-100 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Content Loaded
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex md:flex-col items-center justify-center gap-3 md:w-48">
-                      <div className={`w-full h-px md:hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
-                      <span className={`text-sm font-medium whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>OR</span>
-                      <div className={`w-full h-px md:hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
-                      
-                      <label className={`w-full flex flex-col items-center justify-center px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer transition-all group text-center ${isDarkMode ? 'border-gray-600 hover:border-indigo-500 hover:bg-gray-700' : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50'}`}>
-                        <Upload className={`w-8 h-8 mb-2 ${isDarkMode ? 'text-gray-500 group-hover:text-indigo-400' : 'text-gray-400 group-hover:text-indigo-500'}`} />
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Upload .txt/.md</span>
-                        <input type="file" className="hidden" accept=".txt,.md" onChange={handleFileUpload} />
-                      </label>
-                    </div>
-                  </div>
+                  {renderUploadBox('resume', 'resume')}
                 </div>
 
                 <button
@@ -306,11 +389,24 @@ function App() {
         ) : (
           <div className="h-[calc(100vh-64px)] flex overflow-hidden">
             {/* Sidebar (Desktop) */}
-            <aside className={`hidden md:flex flex-col w-72 border-r h-full flex-shrink-0 transition-colors duration-300 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className={`p-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Target</h2>
-                <div className={`font-bold text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{input.companyName}</div>
-                <div className={`text-sm truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{input.jobRole}</div>
+            <aside className={`
+                hidden md:flex flex-col border-r h-full flex-shrink-0 transition-all duration-300 ease-in-out
+                ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden border-none'}
+                ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+            `}>
+              <div className={`p-6 border-b flex items-start justify-between ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                <div className="min-w-0">
+                    <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Target</h2>
+                    <div className={`font-bold text-lg truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{input.companyName}</div>
+                    <div className={`text-sm truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{input.jobRole}</div>
+                </div>
+                <button 
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500`}
+                    title="Collapse Sidebar"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -326,7 +422,7 @@ function App() {
                   <div className={`${activeTab === 'overview' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
                     <LayoutDashboard className="w-5 h-5" />
                   </div>
-                  <div className="font-semibold text-sm">Mission Control</div>
+                  <div className="font-semibold text-sm whitespace-nowrap">Mission Control</div>
                 </button>
 
                 {/* Game Mode Button */}
@@ -341,7 +437,7 @@ function App() {
                   <div className={`${activeTab === 'game' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`}>
                     <Gamepad2 className="w-5 h-5" />
                   </div>
-                  <div className="font-semibold text-sm">Game Mode</div>
+                  <div className="font-semibold text-sm whitespace-nowrap">Game Mode</div>
                 </button>
 
                 <div className={`my-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}></div>

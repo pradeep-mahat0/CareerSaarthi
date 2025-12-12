@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AgentType, AgentResult, AgentConfig } from '../types';
-import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Download, Printer } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Download, Printer, HelpCircle, X } from 'lucide-react';
 
 interface Props {
   results: Record<AgentType, AgentResult>;
@@ -19,6 +19,7 @@ export const ProcessingOverview: React.FC<Props> = ({
     mockInteractionCount,
     companyName 
 }) => {
+  const [showGuide, setShowGuide] = useState(false);
   const completedAgents = (Object.values(results) as AgentResult[]).filter(r => !r.loading && r.content).length;
   const hasAnyContent = completedAgents > 0;
 
@@ -111,24 +112,66 @@ export const ProcessingOverview: React.FC<Props> = ({
     <div className="h-full overflow-y-auto p-1">
       <div className="max-w-4xl mx-auto space-y-8 py-8">
         
-        {/* Export Actions */}
-        {hasAnyContent && (
-          <div className="flex flex-wrap items-center justify-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <button
-              onClick={handleDownloadMarkdown}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm text-sm font-medium"
-              >
-              <Download className="w-4 h-4" />
-              Download Markdown
-              </button>
-              <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm text-sm font-medium"
-              >
-              <Printer className="w-4 h-4" />
-              Print / Save PDF
-              </button>
-          </div>
+        {/* Actions Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 hidden sm:block">Agent Mission Status</h2>
+           
+           <div className="flex items-center gap-2 ml-auto">
+             <button
+                onClick={() => setShowGuide(!showGuide)}
+                className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors shadow-sm ${showGuide ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+             >
+                <HelpCircle className="w-4 h-4" />
+                {showGuide ? 'Hide Guide' : 'Agent Guide'}
+             </button>
+
+             {hasAnyContent && (
+               <>
+                  <div className="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
+                  <button
+                  onClick={handleDownloadMarkdown}
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm text-sm font-medium"
+                  title="Download Markdown"
+                  >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden md:inline">Export MD</span>
+                  </button>
+                  <button
+                  onClick={handlePrint}
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm text-sm font-medium"
+                  title="Print or Save PDF"
+                  >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden md:inline">Print / PDF</span>
+                  </button>
+               </>
+             )}
+           </div>
+        </div>
+
+        {/* Guide Section */}
+        {showGuide && (
+            <div className="bg-indigo-50 dark:bg-gray-800 border border-indigo-100 dark:border-gray-700 rounded-xl p-5 animate-in fade-in slide-in-from-top-4 duration-300 relative">
+                 <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <X className="w-4 h-4" />
+                 </button>
+                 <h3 className="font-bold text-indigo-900 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4" />
+                    How to use the Agents
+                 </h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
+                     <ul className="space-y-2">
+                        <li><strong className="text-gray-900 dark:text-white">Company Research:</strong> Gets culture & tech stack info. Use this for "Why us?" answers.</li>
+                        <li><strong className="text-gray-900 dark:text-white">Recruitment Process:</strong> Maps out rounds (OA, Tech, HR). Helps you prepare for specific formats.</li>
+                        <li><strong className="text-gray-900 dark:text-white">Previous Questions:</strong> Real past interview questions found online. Gold dust for practice.</li>
+                     </ul>
+                     <ul className="space-y-2">
+                        <li><strong className="text-gray-900 dark:text-white">Resume Optimizer:</strong> Checks your resume against the JD. Gives ATS tips and missing keywords.</li>
+                        <li><strong className="text-gray-900 dark:text-white">HR Generator:</strong> Scripts perfect answers for behavioral questions using your background.</li>
+                        <li><strong className="text-gray-900 dark:text-white">Mock Interviewer:</strong> Live AI simulation. It speaks! Practice your delivery here.</li>
+                     </ul>
+                 </div>
+            </div>
         )}
 
         {/* Agents Grid */}

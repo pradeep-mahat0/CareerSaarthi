@@ -21,11 +21,18 @@ export interface AgentResult {
   sources?: GroundingSource[];
 }
 
+export interface FileData {
+  mimeType: string;
+  data: string; // base64
+}
+
 export interface UserInput {
   companyName: string;
   jobRole: string;
   jobDescription: string;
   resumeContent: string;
+  resumeFile?: FileData;
+  jobDescriptionFile?: FileData;
 }
 
 export interface AgentConfig {
